@@ -1,5 +1,36 @@
 ; Alex Lucas (mal175), Brian Pollack (bmp55)
 ; EECS 345 Project 1, Part 1
 
+
+; Specifications:
+;   state: ((x y ...)(1 5 ...))
+
 (load "simpleParser.scm") ;load parser provided with project description
 
+(define interpret
+  (lambda (f)
+    (parser f)))
+
+;(define state
+;  (lambda (r s)
+    ;I believe syntax rules go here? check the car of the parse tree...
+
+(define value ;Takes a rule and state and produces a numeric value
+  (lambda (r s)
+    (cond
+      ((null? r)
+       (error 'null\ value))
+      ((number? r) r)
+      (else (value (car r) s)))))
+    
+
+(define boolean ;Takes a rule and state and produces true/false
+  (lambda (r s)
+    ;((car r) car (cdr r) cdr (cdr r))))
+    (cond
+      ((equal? (car r) '<) (< (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '>) (> (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '=) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))
+      ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))))
