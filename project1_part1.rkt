@@ -24,7 +24,7 @@
        (error 'null\ value))
       ((number? r) r)
       (else (value (car r) s)))))
-    
+
 
 (define boolean ;Takes a rule and state and produces true/false
   (lambda (r s)
@@ -32,7 +32,7 @@
     (cond
       ((equal? (car r) '<) (< (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '>) (> (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '=) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '==) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))
       ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))))
@@ -42,4 +42,3 @@
     (cond
       ((null? l) #f)
       (else (or (eq? (car l) a) (member? a (cdr l)))))))
-      
