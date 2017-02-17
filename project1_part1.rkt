@@ -11,9 +11,11 @@
   (lambda (f)
     (parser f)))
 
-;(define state
-;  (lambda (r s)
-    ;I believe syntax rules go here? check the car of the parse tree...
+(define state
+  (lambda (r s)
+    (cond
+      ((null? r) s)
+      ((eq? (car (car r)) 'var) (if (member? (cdr (car r)) (car s)) (error 'variable\ already\ declared) (state (cdr r) (cons (car (cdr (car r))) (car s)))))))) ;variable declaration
 
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (r s)
@@ -34,3 +36,10 @@
       ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))
       ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))))
+
+(define member?
+  (lambda (a l)
+    (cond
+      ((null? l) #f)
+      (else (or (eq? (car l) a) (member? a (cdr l)))))))
+      
