@@ -23,7 +23,9 @@
                                                              (cons (cons (cadr (cdr (car r))) (cadr s)) '())))))) ;variable declaration
       ((eq? (car (car r)) '=) (if (not (member? (cadr (car r)) (car s)))
                                   (error 'variable\ not\ declared)
-                                  (assign (cadr (car r)) (cadr (cdr (car r))) s))))))
+                                  (assign (cadr (car r)) (cadr (cdr (car r))) s)))
+      ((eq? (car (car r)) 'return) (value (cdar r) s))
+      )))
       
 (define assign
   (lambda (var exp s)
@@ -39,6 +41,7 @@
       ((null? r)
        (error 'null\ value))
       ((number? r) r)
+      ((symbol? r) (if (eq? (car (car s)) r) (car (cadr s)) (value r (cons (cdar s) (cons (cdr (cadr s)) '())))))
       (else (value (car r) s)))))
 
 
