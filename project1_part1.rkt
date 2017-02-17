@@ -17,22 +17,21 @@
       ((null? r) s)
       ((eq? (car (car r)) 'var) (if (member? (cdr (car r)) (car s))
                                     (error 'variable\ already\ declared)
-                                    (state (cdr r) (cons (cons (car (cdr (car r))) (car s))
+                                    (state (cdr r) (cons (cons (cadr (car r)) (car s))
                                                          (if (null? (cdr (cdr (car r))))
                                                              (cons (cons '() (car (cdr s))) '())
-                                                             (cons (cons (car (cdr (cdr (car r)))) (car (cdr s))) '())))))) ;variable declaration
-      ((eq? (car (car r)) '=) (if (not (member? (cdr (car r)) (car s)))
+                                                             (cons (cons (cadr (cdr (car r))) (cadr s)) '())))))) ;variable declaration
+      ((eq? (car (car r)) '=) (if (not (member? (cadr (car r)) (car s)))
                                   (error 'variable\ not\ declared)
-                                  
-      ))))) 
-
+                                  (assign (cadr (car r)) (cadr (cdr (car r))) s))))))
+      
 (define assign
-  (lambda (var val s)
+  (lambda (var exp s)
     (cond
-      ((eq? (car (car s)) var) (cons (car s) (cons (cons val (cdr (cdr s))) '())))
+      ((eq? (car (car s)) var) (cons (car s) (cons (cons exp (cdr (cdr s))) '())))
       (else ((lambda (blah)
                  (cons (cons (car (car s)) (car blah)) (cons (cons (car (cadr s)) (cadr blah)) '()) ) )
-             (assign var val (cons (cdr (car s)) (cons (cdr (car (cdr s))) '()))))) )))
+             (assign var exp (cons (cdr (car s)) (cons (cdr (car (cdr s))) '()))))) )))
     
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (r s)
