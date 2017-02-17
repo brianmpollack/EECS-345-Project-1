@@ -9,7 +9,7 @@
 
 (define interpret
   (lambda (f)
-    (parser f)))
+    (state (parser f) '())))
 
 (define state
   (lambda (r s)
