@@ -30,7 +30,8 @@
     (cond
       ((equal? (car r) '<) (< (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '>) (> (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '=) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
+      ((equal? (car r) '==) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))
       ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
       ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))))
+
