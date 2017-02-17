@@ -28,7 +28,7 @@
 (define assign
   (lambda (var exp s)
     (cond
-      ((eq? (car (car s)) var) (cons (car s) (cons (cons exp (cdr (cdr s))) '())))
+      ((eq? (car (car s)) var) (cons (car s) (cons (cons exp (cdr (cadr s))) '())))
       (else ((lambda (blah)
                  (cons (cons (car (car s)) (car blah)) (cons (cons (car (cadr s)) (cadr blah)) '()) ) )
              (assign var exp (cons (cdr (car s)) (cons (cdr (car (cdr s))) '()))))) )))
