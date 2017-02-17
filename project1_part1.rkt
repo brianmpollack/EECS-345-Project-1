@@ -20,8 +20,20 @@
                                     (state (cdr r) (cons (cons (car (cdr (car r))) (car s))
                                                          (if (null? (cdr (cdr (car r))))
                                                              (cons (cons '() (car (cdr s))) '())
-                                                             (cons (cons (car (cdr (cdr (car r)))) (car (cdr s))) '())) ))))))) ;variable declaration
+                                                             (cons (cons (car (cdr (cdr (car r)))) (car (cdr s))) '())))))) ;variable declaration
+      ((eq? (car (car r)) '=) (if (not (member? (cdr (car r)) (car s)))
+                                  (error 'variable\ not\ declared)
+                                  
+      ))))) 
 
+(define assign
+  (lambda (var val s)
+    (cond
+      ((null? (car s)) '())
+      ((eq? (car (car s)) var) (cons (car s) (cons (cons val (cdr (cdr s))) '())))
+      (else (assign var val (cons (cdr (car s)) (cons (cdr (car (cdr s))) '())))))))
+                                    
+    
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (r s)
     (cond
