@@ -29,10 +29,10 @@
 (define assign
   (lambda (var val s)
     (cond
-      ((null? (car s)) '())
       ((eq? (car (car s)) var) (cons (car s) (cons (cons val (cdr (cdr s))) '())))
-      (else (assign var val (cons (cdr (car s)) (cons (cdr (car (cdr s))) '())))))))
-                                    
+      (else ((lambda (blah)
+                 (cons (cons (car (car s)) (car blah)) (cons (cons (car (cadr s)) (cadr blah)) '()) ) )
+             (assign var val (cons (cdr (car s)) (cons (cdr (car (cdr s))) '()))))) )))
     
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (r s)
