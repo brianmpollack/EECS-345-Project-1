@@ -15,7 +15,12 @@
   (lambda (r s)
     (cond
       ((null? r) s)
-      ((eq? (car (car r)) 'var) (if (member? (cdr (car r)) (car s)) (error 'variable\ already\ declared) (state (cdr r) (cons (car (cdr (car r))) (car s)))))))) ;variable declaration
+      ((eq? (car (car r)) 'var) (if (member? (cdr (car r)) (car s))
+                                    (error 'variable\ already\ declared)
+                                    (state (cdr r) (cons (cons (car (cdr (car r))) (car s))
+                                                         (if (null? (cdr (cdr (car r))))
+                                                             (cons (cons '() (car (cdr s))) '())
+                                                             (cons (cons (car (cdr (cdr (car r)))) (car (cdr s))) '())) ))))))) ;variable declaration
 
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (r s)
