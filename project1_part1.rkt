@@ -71,3 +71,14 @@
     (cond
       ((null? l) #f)
       (else (or (eq? (car l) a) (member? a (cdr l)))))))
+
+
+(define third?
+  (lambda (l)
+    (not (null?  (cdr (cdr l))))))
+
+(define fourth?
+  (lambda (l)
+    (not (null? (cdr (cdr (cdr l)))))))
+
+
