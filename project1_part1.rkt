@@ -25,6 +25,16 @@
                                   (error 'variable\ not\ declared)
                                   (assign (cadr (car r)) (cadr (cdr (car r))) s)))
       ((eq? (car (car r)) 'return) (value (cdar r) s))
+
+      ((eq? (car (car r)) 'if) (if (boolean (cadr (car r)) s)
+                                   (state (cdr (cdr (car r))) s)
+                                   (if (not (null? (cdr (cdr (cdr (car r))))))
+                                       (state (cdr (cdr (cdr (car r)))) s)
+                                       ())))
+     ; ((eq? (car (car r)) 'while) (if (boolean (cadr (car r)) s)
+      ;                                (state 
+
+
       )))
       
 (define assign
