@@ -114,7 +114,8 @@
       (define value_for_variable
         (lambda (variable state)
           (cond
-            ((null? (car state)) (error 'variable\ not\ defined))
+            ((not (member? variable (car state))) (error 'variable\ not\ declared))
+            ((null? (car (cadr state))) (error 'variable\ not\ defined))
             ((eq? (car (car state)) variable) (car (cadr state)))
             (else (value_for_variable variable (state_cdr state)))
             )))
