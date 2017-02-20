@@ -23,7 +23,7 @@
                                                              (cons (cons (cadr (cdr (car r))) (cadr s)) '())))))) ;variable declaration
       ((eq? (car (car r)) '=) (if (not (member? (cadr (car r)) (car s)))
                                   (error 'variable\ not\ declared)
-                                  (assign (cadr (car r)) (cadr (cdr (car r))) s)))
+                                  (assign* (cadr (car r)) (cadr (cdr (car r))) s)))
       ((eq? (car (car r)) 'return) (value (cdar r) s))
 
       ((eq? (car (car r)) 'if) (if (boolean (cadr (car r)) s)
@@ -36,16 +36,20 @@
 
 
       )))
-      
-(define assign
-  (lambda (var expression state)
+
+(define assign*
+  (lambda (variable expression state)
     (cond
-      ((eq? (first_state_variable state) var)
-       (assign_variable var expression state))
+      ((and (pair? expression) (eq? (car expression) '=)) (assign* variable (second expression) (assign* (second expression) (third expression) state)))
+      ((eq? (first_state_variable state) variable)
+       (assign_variable variable expression state))
+      
       (else ((lambda (memoization_variable)
                  (cons (cons (car (car state)) (car memoization_variable)) (cons (cons (first_state_value state) (cadr memoization_variable)) '()) ) )
-             (assign var (value expression state) (state_cdr state)))) )))
+             (assign* variable (value expression state) (state_cdr state))))
 
+      )))
+      
 
 (define assign_variable
   (lambda (variable expression state)
