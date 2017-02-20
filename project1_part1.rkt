@@ -98,6 +98,18 @@
       (else (value_for_variable variable (state_cdr state)))
       )))
 
+(define func
+  (lambda (condition state)
+    (cond
+      ((and (not (pair? (second condition))) (not (pair? (third condition)))) state)
+      ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (assign* (second (second condition)) (third (second condition)) state))
+      ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (second (third condition)) (third (third condition)) state))
+      (else (assign* (second (third condition)) (third (third condition)) (assign* (second (second condition)) (third (second condition)) state)))
+
+
+    ;(if (and (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (third (third condition)) (third (third condition)) state) ())
+    )))
+
 (define boolean ;Takes a rule and state and produces true/false
   (lambda (r s)
     ;((car r) car (cdr r) cdr (cdr r))))
