@@ -9,7 +9,7 @@
 
 (define interpret
   (lambda (f)
-    (state (parser f) '())))
+    (state (parser f) '(()()))))
 
 (define state
   (lambda (r s)
@@ -38,22 +38,41 @@
       )))
       
 (define assign
-  (lambda (var exp s)
+  (lambda (var expression state)
     (cond
-      ((eq? (car (car s)) var) (cons (car s) (cons (cons exp (cdr (cadr s))) '())))
+      ((eq? (car (car state)) var) (cons (car state) (cons (cons (value expression state) (cadr state)) '())))
       (else ((lambda (blah)
-                 (cons (cons (car (car s)) (car blah)) (cons (cons (car (cadr s)) (cadr blah)) '()) ) )
-             (assign var exp (cons (cdr (car s)) (cons (cdr (car (cdr s))) '()))))) )))
+                 (cons (cons (car (car state)) (car blah)) (cons (cons (car (cadr state)) (cadr blah)) '()) ) )
+             (assign var (value expression state) (cons (cdr (car state)) (cons (cdr (car (cdr state))) '()))))) )))
     
 (define value ;Takes a rule and state and produces a numeric value
-  (lambda (r s)
+  (lambda (expression state)
     (cond
-      ((null? r)
-       (error 'null\ value))
-      ((number? r) r)
-      ((symbol? r) (if (eq? (car (car s)) r) (car (cadr s)) (value r (cons (cdar s) (cons (cdr (cadr s)) '())))))
-      (else (value (car r) s)))))
+      ((null? expression)
+       (error 'null\ expression))
+      ((number? expression) expression)
+      ;((symbol? r) (if (eq? (car (car s)) r) (car (cadr s)) (value r (cons (cdar s) (cons (cdr (cadr s)) '())))))
+      ((symbol? expression) (value_for_variable expression state))
+      (else (operation expression state))
+            )))
 
+(define operation ; + - * / % (supports unary -)
+  (lambda (expression state)
+    (cond
+      ((equal? (car expression) '+) (+ (value (second expression) state) (value (third expression) state)))
+      ((equal? (car expression) '-) (- (value (second expression) state) (value (third expression) state)))
+      ((equal? (car expression) '*) (* (value (second expression) state) (value (third expression) state)))
+      ((equal? (car expression) '/) (/ (value (second expression) state) (value (third expression) state)))
+      ((equal? (car expression) '%) (modulo (value (second expression) state) (value (third expression) state)))
+      )))
+
+(define value_for_variable
+  (lambda (variable state)
+    (cond
+      ((null? (car state)) (error 'variable\ not\ defined))
+      ((eq? (car (car state)) variable) (car (cadr state)))
+      (else (value_for_variable variable (cons (cdr (car state)) (cons (cdr (cadr state)) '()))))
+      )))
 
 (define boolean ;Takes a rule and state and produces true/false
   (lambda (r s)
