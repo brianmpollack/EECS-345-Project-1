@@ -40,10 +40,29 @@
 (define assign
   (lambda (var expression state)
     (cond
-      ((eq? (car (car state)) var) (cons (car state) (cons (cons (value expression state) (cadr state)) '())))
-      (else ((lambda (blah)
-                 (cons (cons (car (car state)) (car blah)) (cons (cons (car (cadr state)) (cadr blah)) '()) ) )
-             (assign var (value expression state) (cons (cdr (car state)) (cons (cdr (car (cdr state))) '()))))) )))
+      ((eq? (first_state_variable state) var)
+       (assign_variable var expression state))
+      (else ((lambda (memoization_variable)
+                 (cons (cons (car (car state)) (car memoization_variable)) (cons (cons (first_state_value state) (cadr memoization_variable)) '()) ) )
+             (assign var (value expression state) (state_cdr state)))) )))
+
+
+(define assign_variable
+  (lambda (variable expression state)
+    (cons (car state) (cons (cons (value expression state) (cdr (cadr state)) )'()))
+    ))
+
+(define first_state_variable
+  (lambda (state)
+    (car (car state))))
+
+(define first_state_value
+  (lambda (state)
+    (car (cadr state))))
+
+(define state_cdr ;Returns the state without the first variable assignment (without the first elements of the binding lists)
+  (lambda (state)
+    (cons (cdr (car state)) (cons (cdr (cadr state)) '()))))
     
 (define value ;Takes a rule and state and produces a numeric value
   (lambda (expression state)
@@ -53,6 +72,7 @@
       ((number? expression) expression)
       ;((symbol? r) (if (eq? (car (car s)) r) (car (cadr s)) (value r (cons (cdar s) (cons (cdr (cadr s)) '())))))
       ((symbol? expression) (value_for_variable expression state))
+      ;((eq? (car expression '=)
       (else (operation expression state))
             )))
 
@@ -71,7 +91,7 @@
     (cond
       ((null? (car state)) (error 'variable\ not\ defined))
       ((eq? (car (car state)) variable) (car (cadr state)))
-      (else (value_for_variable variable (cons (cdr (car state)) (cons (cdr (cadr state)) '()))))
+      (else (value_for_variable variable (state_cdr state)))
       )))
 
 (define boolean ;Takes a rule and state and produces true/false
