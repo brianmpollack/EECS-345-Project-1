@@ -23,14 +23,16 @@
                                                              (cons (cons (cadr (cdr (car r))) (cadr s)) '())))))) ;variable declaration
       ((eq? (car (car r)) '=) (if (not (member? (cadr (car r)) (car s)))
                                   (error 'variable\ not\ declared)
-                                  (assign* (cadr (car r)) (cadr (cdr (car r))) s)))
-      ((eq? (car (car r)) 'return) (value (cdar r) s))
+                                  (state (cdr r) (assign* (cadr (car r)) (cadr (cdr (car r))) s))))
+      ((eq? (car (car r)) 'return) (value (second (car r)) s))
 
-      ((eq? (car (car r)) 'if) (if (boolean (cadr (car r)) s)
-                                   (state (cdr (cdr (car r))) s)
-                                   (if (not (null? (cdr (cdr (cdr (car r))))))
-                                       (state (cdr (cdr (cdr (car r)))) s)
-                                       ())))
+      ((eq? (car (car r)) 'if) ((lambda (newstate newcondition)
+                                     (if (boolean newcondition newstate)
+                                         (state (cons (third (car r)) (cdr r)) newstate)
+                                         (if (not (null? (cdr (cdr (cdr (car r))))))
+                                             (state (cons (fourth (car r)) (cdr r)) newstate)
+                                             ())))
+                                    (func (cadr (car r)) s) (newcondition (second (car r)))))
      ; ((eq? (car (car r)) 'while) (if (boolean (cadr (car r)) s)
       ;                                (state 
 
@@ -110,16 +112,28 @@
     ;(if (and (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (third (third condition)) (third (third condition)) state) ())
     )))
 
+(define newcondition
+  (lambda (condition)
+    (cond
+      ((and (not (pair? (second condition))) (not (pair? (third condition)))) condition)
+      ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (consthree (car condition) (second (second condition)) (third condition)))
+      ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (consthree (car condition) (second condition) (second (third condition))))
+      (else (consthree (car condition) (second (second condition)) (second (third condition))))
+      )))
+
+(define consthree
+  (lambda (first second third)
+    (cons first (cons second (cons third '())))))
 (define boolean ;Takes a rule and state and produces true/false
   (lambda (r s)
     ;((car r) car (cdr r) cdr (cdr r))))
     (cond
-      ((equal? (car r) '<) (< (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '>) (> (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '==) (= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))
-      ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cdr (cdr r)) s)))
-      ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cdr (cdr r)) s))))))
+      ((equal? (car r) '<) (< (value (car (cdr r)) s) (value(cadr (cdr r)) s)))
+      ((equal? (car r) '>) (> (value (car (cdr r)) s) (value(cadr (cdr r)) s)))
+      ((equal? (car r) '==) (= (value (car (cdr r)) s) (value(cadr (cdr r)) s)))
+      ((equal? (car r) '!=) (not (= (value (car (cdr r)) s) (value(cadr (cdr r)) s))))
+      ((equal? (car r) '<=) (<= (value (car (cdr r)) s) (value(cadr (cdr r)) s)))
+      ((equal? (car r) '>=) (>= (value (car (cdr r)) s) (value(cadr (cdr r)) s))))))
 
 (define member?
   (lambda (a l)
