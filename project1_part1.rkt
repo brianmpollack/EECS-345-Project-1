@@ -48,8 +48,8 @@
                                            (newstate (cadr (car parsetree)) instate) (newcondition (second (car parsetree)))))
       )))
 
-(define assign*
-  (lambda (variable expression state)
+(define assign* ;Recursively assigns variables in the state and returns the state
+  (lambda (variable expression state) 
     (cond
       ((and (pair? expression) (eq? (car expression) '=)) (assign* variable (second expression) (assign* (second expression) (third expression) state)))
       ((eq? (first_state_variable state) variable)
@@ -62,7 +62,7 @@
       )))
       
 
-(define assign_variable
+(define assign_variable ;Set the variable in the state to the given value
   (lambda (variable expression state)
     (cons (car state) (cons (cons (value* expression state) (cdr (cadr state)) )'()))
     ))
@@ -113,7 +113,7 @@
 
       )))
 
-(define value_for_variable
+(define value_for_variable ;Gets the value for a variable in the given state. Returns the value
   (lambda (variable state)
     (cond
       ((not (member? variable (car state))) (error 'variable\ not\ declared))
@@ -121,7 +121,7 @@
       (else (value_for_variable variable (state_cdr state)))
       )))
 
-(define newstate
+(define newstate ;Creates a new state defined by the current state and the condition
   (lambda (condition state)
     (cond
       ((and (not (pair? (second condition))) (not (pair? (third condition)))) state)
@@ -132,7 +132,7 @@
       (else state)
       )))
 
-(define newcondition
+(define newcondition ;Creates a new condition based on the condition. Useful for nested expressions (replace the computed value with the variable) - used in conjunction with newstate.
   (lambda (condition)
     (cond
       ((and (not (pair? (second condition))) (not (pair? (third condition)))) condition)
@@ -143,9 +143,10 @@
       (else condition)
       )))
 
-(define consthree
+(define consthree ;Cons three items 
   (lambda (first second third)
     (cons first (cons second (cons third '())))))
+
 (define boolean ;Takes a rule and state and produces true/false
   (lambda (parsetree instate)
     (cond
