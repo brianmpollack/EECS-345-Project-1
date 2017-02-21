@@ -15,16 +15,16 @@
   (lambda (parsetree instate)
     (cond
       ((null? parsetree) instate) ;If we finished the parse tree, we are done
-      ((eq? (first_state_variable parsetree) 'var) (if (member? (second (car parsetree)) (car instate)) ;Variable assignment
+      ((eq? (first_variable_in_list parsetree) 'var) (if (member? (second (car parsetree)) (car instate)) ;Variable assignment
                                             (error 'variable\ already\ declared)
                                             (state (cdr parsetree) (cons (cons (cadr (car parsetree)) (car instate))
                                                                          (if (null? (cdr (cdr (car parsetree))))
                                                                              (cons (cons '() (car (cdr instate))) '())
                                                                              (cons (cons (value* (third (car parsetree)) instate) (cadr instate)) '())))))) ;variable declaration
-      ((eq? (first_state_variable parsetree) '=) (if (not (member? (cadr (car parsetree)) (car instate))) ;Variable assignment
+      ((eq? (first_variable_in_list parsetree) '=) (if (not (member? (cadr (car parsetree)) (car instate))) ;Variable assignment
                                           (error 'variable\ not\ declared)
                                           (state (cdr parsetree) (assign* (cadr (car parsetree)) (cadr (cdr (car parsetree))) instate))))
-      ((eq? (first_state_variable parsetree) 'return) ((lambda (returnval) ;return statement
+      ((eq? (first_variable_in_list parsetree) 'return) ((lambda (returnval) ;return statement
                                               (cond
                                                 ((not (boolean? returnval)) returnval)
                                                 (else (if returnval 'true 'false)
@@ -33,14 +33,14 @@
 
                                             (value* (second (car parsetree)) instate)))
 
-      ((eq? (first_state_variable parsetree) 'if) ((lambda (newstate newcondition) ;if statement
+      ((eq? (first_variable_in_list parsetree) 'if) ((lambda (newstate newcondition) ;if statement
                                           (if (boolean newcondition newstate)
                                               (state (cons (third (car parsetree)) (cdr parsetree)) newstate)
                                               (if (fourth? (car parsetree))
                                                   (state (cons (fourth (car parsetree)) (cdr parsetree)) newstate)
                                                   (state (cdr parsetree) instate))))
                                         (newstate (cadr (car parsetree)) instate) (newcondition (second (car parsetree)))))
-      ((eq? (first_state_variable parsetree) 'while) ((lambda (newstate newcondition) ;while loop
+      ((eq? (first_variable_in_list parsetree) 'while) ((lambda (newstate newcondition) ;while loop
                                              (if (boolean newcondition newstate)
                                                  (state (cons (third (car parsetree)) parsetree) instate)
                                                  (state (cdr parsetree) instate)
@@ -67,11 +67,15 @@
     (cons (car state) (cons (cons (value* expression state) (cdr (cadr state)) )'()))
     ))
 
-(define first_state_variable
+(define first_variable_in_list ;Returns the first variable in a list
+  (lambda (list)
+    (car (car list))))
+;These are the same and accomplish the same thing, but it helps to understand the code in other areas of this project
+(define first_state_variable ;Returns the first variable name in the state binding
   (lambda (state)
-    (car (car state))))
+    (first_variable_in_list state)))
 
-(define first_state_value
+(define first_state_value ;Returns the first value in the state binding
   (lambda (state)
     (car (cadr state))))
 
@@ -155,19 +159,20 @@
       ((equal? (car parsetree) '||) (or (value* (second parsetree) instate) (value* (third parsetree) instate)))
       ((equal? (car parsetree) '!) (not (value* (second parsetree) instate)))
       )))
-(define member?
-  (lambda (a l)
+
+(define member? ;Returns #t if list contains atom
+  (lambda (atom list)
     (cond
-      ((null? l) #f)
-      (else (or (eq? (car l) a) (member? a (cdr l)))))))
+      ((null? list) #f)
+      (else (or (eq? (car list) atom) (member? atom (cdr list)))))))
 
 
-(define third?
-  (lambda (l)
-    (not (null?  (cdr (cdr l))))))
+(define third? ;Returns #t if list contains a third item
+  (lambda (list)
+    (not (null?  (cdr (cdr list))))))
 
-(define fourth?
-  (lambda (l)
-    (not (null? (cdr (cdr (cdr l)))))))
+(define fourth? ;Returns #t if list contains a fourth item
+  (lambda (list)
+    (not (null? (cdr (cdr (cdr list)))))))
 
 
