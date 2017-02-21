@@ -113,8 +113,7 @@
   (lambda (variable state)
     (cond
       ((not (member? variable (car state))) (error 'variable\ not\ declared))
-      ((null? (car (cadr state))) (error 'variable\ not\ defined))
-      ((eq? (car (car state)) variable) (car (cadr state)))
+      ((eq? (first_state_variable state) variable) (if (null? (first_state_value state)) (error 'variable\ not\ defined) (first_state_value state))) ;If value is not yet defined, throw error. Else, return value.
       (else (value_for_variable variable (state_cdr state)))
       )))
 
