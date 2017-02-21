@@ -143,18 +143,17 @@
   (lambda (first second third)
     (cons first (cons second (cons third '())))))
 (define boolean ;Takes a rule and state and produces true/false
-  (lambda (r s)
+  (lambda (parsetree instate)
     (cond
-      ((equal? (car r) '<) (< (value* (second r) s) (value*(third r) s)))
-      ((equal? (car r) '>) (> (value* (second r) s) (value*(third r) s)))
-      ((equal? (car r) '==) (= (value* (second r) s) (value*(third r) s)))
-      ((equal? (car r) '!=) (not (= (value* (second r) s) (value*(third r) s))))
-      ((equal? (car r) '<=) (<= (value* (second r) s) (value*(third r) s)))
-      ((equal? (car r) '>=) (>= (value* (second r) s) (value*(third r) s)))
-      ((equal? (car r) '&&) (and (value* (second r) s) (value* (third r) s)))
-      ((equal? (car r) '||) (or (value* (second r) s) (value* (third r) s)))
-      ((equal? (car r) '!) (not (value* (second r) s)))
-
+      ((equal? (car parsetree) '<) (< (value* (second parsetree) instate) (value*(third parsetree) instate)))
+      ((equal? (car parsetree) '>) (> (value* (second parsetree) instate) (value*(third parsetree) instate)))
+      ((equal? (car parsetree) '==) (= (value* (second parsetree) instate) (value*(third parsetree) instate)))
+      ((equal? (car parsetree) '!=) (not (= (value* (second parsetree) instate) (value*(third parsetree) instate))))
+      ((equal? (car parsetree) '<=) (<= (value* (second parsetree) instate) (value*(third parsetree) instate)))
+      ((equal? (car parsetree) '>=) (>= (value* (second parsetree) instate) (value*(third parsetree) instate)))
+      ((equal? (car parsetree) '&&) (and (value* (second parsetree) instate) (value* (third parsetree) instate)))
+      ((equal? (car parsetree) '||) (or (value* (second parsetree) instate) (value* (third parsetree) instate)))
+      ((equal? (car parsetree) '!) (not (value* (second parsetree) instate)))
       )))
 (define member?
   (lambda (a l)
