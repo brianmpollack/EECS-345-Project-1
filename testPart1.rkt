@@ -13,10 +13,14 @@
 (test "Tests/8.javaish" 10)
 (test "Tests/9.javaish" 5)
 (test "Tests/10.javaish" -39)
-;(test "Tests/11.javaish" 20) ;Should return error
-;(test "Tests/12.javaish" 20) ;Should return error
-;(test "Tests/13.javaish" 20) ;Should return error
-;(test "Tests/14.javaish" 12) ;Should return error
+(with-handlers ([exn:fail? (lambda (exn) exn)])
+    (test "Tests/11.javaish" 20))
+(with-handlers ([exn:fail? (lambda (exn) exn)])
+    (test "Tests/12.javaish" 20))
+(with-handlers ([exn:fail? (lambda (exn) exn)])
+    (test "Tests/13.javaish" 20))
+(with-handlers ([exn:fail? (lambda (exn) exn)])
+    (test "Tests/14.javaish" 20))
 (test "Tests/15.javaish" 'true)
 (test "Tests/16.javaish" 100)
 (test "Tests/17.javaish" 'false)
