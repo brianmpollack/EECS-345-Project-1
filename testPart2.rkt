@@ -1,4 +1,4 @@
-(load "project1.scm")
+(load "interpreter.scm")
 (define test
   (lambda (file expected)
     (if (eq? (interpret file) expected) (string-append "Passed: " file) (string-append "Failed: " file))))
