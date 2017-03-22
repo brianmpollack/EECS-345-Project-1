@@ -9,7 +9,7 @@
 
 (define interpret
   (lambda (file)
-    (state (parser file) '(()())))) ;Initialize empty state
+    (state (parser file) '((()()))))) ;Initialize empty state
 
 
 
@@ -20,7 +20,7 @@
       ((eq? (first_variable_in_list parsetree) 'var) (if (var_declared (var (next_line parsetree)) instate) ;Variable assignment
                                                          (error 'variable\ already\ declared)
                                                          (state (cdr parsetree) (if (value? (next_line parsetree))
-                                                                                    (cons (add_var_with_value (var (next_line parsetree)) (val (next_line parsetree)) (car instate)) (cdr instate))
+                                                                                    (add_var_with_value (var (next_line parsetree)) (val (next_line parsetree)) instate)
                                                                                     (cons (add_var (var (next_line parsetree)) (car instate)) (cdr instate) )))))
       ;variable declaration
       ((eq? (first_variable_in_list parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
@@ -69,9 +69,7 @@
       ((member? var (variables (car instate))) #t)
       (else (var_declared var (cdr instate))))))
 
-(define variables
-  (lambda (state_level)
-    (car state_level)))
+(define variables car)
 
 
 
@@ -79,8 +77,8 @@
   (lambda (var local)
     (cons (cons var (car local)) (cons (cons '() (cadr local)) '()))))
 (define add_var_with_value
-  (lambda (var value local)
-    (cons (cons var (car local)) (cons (cons value (cadr local)) '()))))
+  (lambda (var value state)
+    (cons (cons (cons var (car (car state))) (cons (cons (value* value state) (cadr (car state))) '())) (cdr state))))
 
 (define var
   (lambda (line)
@@ -95,19 +93,19 @@
   (lambda (var expr state)
     (cond
     ((null? state) (error 'variable\ not\ declared))
-    ((member? var (top_variables state)) (assign_to_layer var expr (car state)))
+    ((member? var (top_variables state)) (cons (assign_to_layer var (value* expr state) (car state)) (cdr state)))
     (else ((lambda (return)
              (cons (car state) (cons return '())))
 
                     (assign var expr (cdr state)))))))
 
 (define assign_to_layer
-  (lambda (var expr top)
+  (lambda (var val top)
     (cond
-    ((eq? (car (car top)) var) (replace_first_val (value* expr top) top))
+    ((eq? (car (car top)) var) (replace_first_val val top))
     (else ((lambda (return)
              (cons (cons (car (car top)) (car return)) (cons (cons (first_state_value top) (cadr return)) '())))
-             (assign_to_layer var (value* expr top) (state_cdr top)))))))
+             (assign_to_layer var val (state_cdr top)))))))
 
 (define replace_first_val
   (lambda (expr state)
@@ -202,9 +200,16 @@
       (define value_for_variable ;Gets the value for a variable in the given state. Returns the value
         (lambda (variable state)
           (cond
+            ((null? state) (error 'variable\ not\ declared))
+            ((member? variable (top_variables state)) (value_of_state variable (car state)))
+            (else (value_for_variable variable (cdr state))))))
+
+(define value_of_state
+  (lambda (variable state)
+    (cond   
             ((not (member? variable (car state))) (error 'variable\ not\ declared))
             ((eq? (first_state_variable state) variable) (if (null? (first_state_value state)) (error 'variable\ not\ defined) (first_state_value state))) ;If value is not yet defined, throw error. Else, return value.
-            (else (value_for_variable variable (state_cdr state)))
+            (else (value_of_state variable (state_cdr state)))
             )))
 
       (define newstate ;Creates a new state defined by the current state and the condition
@@ -263,4 +268,6 @@
           (not (null? (cdr (cdr (cdr list)))))))
 
 
-      
+       (define value? ;Returns #t if list contains a third item
+        (lambda (list)
+          (not (null?  (cdr (cdr list))))))
