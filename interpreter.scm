@@ -9,8 +9,14 @@
 
 (define interpret
   (lambda (file)
-    (state (parser file) '((()()))))) ;Initialize empty state
+    (state (parser file) new_state))) ;Initialize empty state
 
+(define new_state '((()())))
+(define new_layer '(()()))
+
+(define addlayer
+  (lambda (state)
+    (cons new_layer state)))
 
 
 (define state
@@ -25,7 +31,7 @@
       ;variable declaration
       ((eq? (first_variable_in_list parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
                                                        (error 'variable\ not\ declared)
-                                                       (state (cdr parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate) )))
+                                                       (state (cdr parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate instate) )))
 
       ((eq? (first_variable_in_list parsetree) 'return) ((lambda (returnval) ;return statement
                                                            (cond
@@ -50,13 +56,22 @@
                                                               (state (cdr parsetree) instate)
                                                               ))
                                                         (newstate (cadr (car parsetree)) instate) (newcondition (second (car parsetree)))))
-      ((eq? (first_variable_in_list parsetree) 'begin) (state (bracket_cons (reverse (cdr (car parsetree))) (cdr parsetree)) instate))
-      ((eq? (first_variable_in_list parsetree) 'break) (state (pop_through_while parsetree) instate))
-      ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) instate))
+      ((eq? (first_variable_in_list parsetree) 'begin) (state (bracket_cons (reverse (cdr (car parsetree))) (parse_with_end parsetree)) (addlayer instate)))
+      ((eq? (first_variable_in_list parsetree) 'end) (state (cdr parsetree) (cdr instate)))
+      ((eq? (first_variable_in_list parsetree) 'break) (if (can_break? instate)
+                                                           (state (pop_through_while parsetree) (cdr instate))
+                                                           (error 'cannot\ break)))
+      ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) (cdr instate)))
       ;((eq? (first_variable_in_list parsetree) 'throw) (second (car parsetree)))
 
       )))
 
+(define can_break?
+  (lambda (state)
+    (not (null? (cdr state)))))
+(define parse_with_end
+  (lambda (parsetree)
+    (cons '(end) (cdr parsetree))))
 (define next_line
   (lambda (parsetree)
     (car parsetree)))
@@ -90,14 +105,14 @@
 
 
 (define assign
-  (lambda (var expr state)
+  (lambda (var expr state full_state)
     (cond
     ((null? state) (error 'variable\ not\ declared))
-    ((member? var (top_variables state)) (cons (assign_to_layer var (value* expr state) (car state)) (cdr state)))
+    ((member? var (top_variables state)) (cons (assign_to_layer var (value* expr full_state) (car state)) (cdr state)))
     (else ((lambda (return)
-             (cons (car state) (cons return '())))
+             (cons (car state) return))
 
-                    (assign var expr (cdr state)))))))
+                    (assign var expr (cdr state) full_state))))))
 
 (define assign_to_layer
   (lambda (var val top)
@@ -215,6 +230,7 @@
       (define newstate ;Creates a new state defined by the current state and the condition
         (lambda (condition state)
           (cond
+            ((not (pair? condition)) state)
             ((and (not (pair? (second condition))) (not (pair? (third condition)))) state)
             ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (assign* (second (second condition)) (third (second condition)) state))
             ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (second (third condition)) (third (third condition)) state))
@@ -226,6 +242,7 @@
       (define newcondition ;Creates a new condition based on the condition. Useful for nested expressions (replace the computed value with the variable) - used in conjunction with newstate.
         (lambda (condition)
           (cond
+            ((not (pair? condition)) condition)
             ((and (not (pair? (second condition))) (not (pair? (third condition)))) condition)
             ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (consthree (car condition) (second (second condition)) (third condition)))
             ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (consthree (car condition) (second condition) (second (third condition))))
@@ -241,6 +258,9 @@
       (define boolean ;Takes a rule and state and produces true/false
         (lambda (parsetree instate)
           (cond
+            ((and (not (pair? parsetree)) (equal? parsetree 'true)) #t)
+            ((and (not (pair? parsetree)) (equal? parsetree 'false)) #f)
+
             ((equal? (car parsetree) '<) (< (value* (second parsetree) instate) (value*(third parsetree) instate)))
             ((equal? (car parsetree) '>) (> (value* (second parsetree) instate) (value*(third parsetree) instate)))
             ((equal? (car parsetree) '==) (= (value* (second parsetree) instate) (value*(third parsetree) instate)))
