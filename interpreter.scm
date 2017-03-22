@@ -62,13 +62,8 @@
                                                            (state (pop_through_while parsetree) (cdr instate))
                                                            (error 'cannot\ break)))
       ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) (cdr instate)))
-      ((eq? (first_variable_in_list parsetree) 'throw) (raise (second (car parsetree))))
-      ((eq? (first_variable_in_list parsetree) 'try) (state (cdr parsetree) (state_finally (fourth (car parsetree)) (with-handlers ([(lambda (v) (number? v)) (lambda (v)
-
-                                                                                                 (state_catch instate (third (car parsetree)) v)
-
-
-                                                                                                 )])  (state_try instate (second (car parsetree)))))))
+      ((eq? (first_variable_in_list parsetree) 'throw) (raise (value* (second (car parsetree)) instate)))
+      ((eq? (first_variable_in_list parsetree) 'try) (state (cdr parsetree) (tcf_state parsetree instate)))
 
       )))
 
@@ -87,6 +82,10 @@
     (cond
       ((null? finallybody) instate)
       (else (state (cadr finallybody) instate)))))
+
+(define tcf_state
+  (lambda (parsetree instate)
+    (state_finally (fourth (car parsetree)) (with-handlers ([(lambda (v) (number? v)) (lambda (v) (state_catch instate (third (car parsetree)) v))])  (state_try instate (second (car parsetree)))))))
 
 (define can_break?
   (lambda (state)
