@@ -17,15 +17,16 @@
   (lambda (parsetree instate)
     (cond
       ((null? parsetree) instate) ;If we finished the parse tree, we are done
-      ((eq? (first_variable_in_list parsetree) 'var) (if (member? (second (car parsetree)) (car instate)) ;Variable assignment
+      ((eq? (first_variable_in_list parsetree) 'var) (if (var_declared (var (next_line parsetree)) instate) ;Variable assignment
                                                          (error 'variable\ already\ declared)
-                                                         (state (cdr parsetree) (cons (cons (cadr (car parsetree)) (car instate))
-                                                                                      (if (null? (cdr (cdr (car parsetree))))
-                                                                                          (cons (cons '() (car (cdr instate))) '())
-                                                                                          (cons (cons (value* (third (car parsetree)) instate) (cadr instate)) '())))))) ;variable declaration
-      ((eq? (first_variable_in_list parsetree) '=) (if (not (member? (cadr (car parsetree)) (car instate))) ;Variable assignment
+                                                         (state (cdr parsetree) (if (value? (next_line parsetree))
+                                                                                    (cons (add_var_with_value (var (next_line parsetree)) (val (next_line parsetree)) (car instate)) (cdr instate))
+                                                                                    (cons (add_var (var (next_line parsetree)) (car instate)) (cdr instate) )))))
+      ;variable declaration
+      ((eq? (first_variable_in_list parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
                                                        (error 'variable\ not\ declared)
-                                                       (state (cdr parsetree) (assign* (cadr (car parsetree)) (cadr (cdr (car parsetree))) instate))))
+                                                       (state (cdr parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate) )))
+
       ((eq? (first_variable_in_list parsetree) 'return) ((lambda (returnval) ;return statement
                                                            (cond
                                                              ((not (boolean? returnval)) returnval)
@@ -55,6 +56,65 @@
       ;((eq? (first_variable_in_list parsetree) 'throw) (second (car parsetree)))
 
       )))
+
+(define next_line
+  (lambda (parsetree)
+    (car parsetree)))
+
+
+(define var_declared
+  (lambda (var instate)
+    (cond
+      ((null? instate) #f)
+      ((member? var (variables (car instate))) #t)
+      (else (var_declared var (cdr instate))))))
+
+(define variables
+  (lambda (state_level)
+    (car state_level)))
+
+
+
+(define add_var
+  (lambda (var local)
+    (cons (cons var (car local)) (cons (cons '() (cadr local)) '()))))
+(define add_var_with_value
+  (lambda (var value local)
+    (cons (cons var (car local)) (cons (cons value (cadr local)) '()))))
+
+(define var
+  (lambda (line)
+    (second line)))
+
+(define val
+  (lambda (line)
+    (third line)))
+
+
+(define assign
+  (lambda (var expr state)
+    (cond
+    ((null? state) (error 'variable\ not\ declared))
+    ((member? var (top_variables state)) (assign_to_layer var expr (car state)))
+    (else ((lambda (return)
+             (cons (car state) (cons return '())))
+
+                    (assign var expr (cdr state)))))))
+
+(define assign_to_layer
+  (lambda (var expr top)
+    (cond
+    ((eq? (car (car top)) var) (replace_first_val (value* expr top) top))
+    (else ((lambda (return)
+             (cons (cons (car (car top)) (car return)) (cons (cons (first_state_value top) (cadr return)) '())))
+             (assign_to_layer var (value* expr top) (state_cdr top)))))))
+
+(define replace_first_val
+  (lambda (expr state)
+    (cons (car state) (cons (cons expr (cdr (cadr state))) '()))))
+
+(define top_variables caar)
+
 
 (define pop_through_while
   (lambda (parsetree)
