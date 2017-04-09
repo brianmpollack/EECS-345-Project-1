@@ -82,6 +82,7 @@
       ((eq? (first_variable_in_list parsetree) 'throw) (state (strip_first_command parsetree) instate (value* (second (car parsetree)) instate)))
       ((eq? (first_variable_in_list parsetree) 'try) (state (new_tcf_parsetree parsetree) instate err))
       ((eq? (first_variable_in_list parsetree) 'catch) (state (pop_catch_block parsetree) instate err))
+      ((eq? (first_variable_in_list parsetree) 'catch_end) (state (strip_first_command parsetree) instate err))
                                                            
       )))
 
@@ -94,15 +95,17 @@
       (else (pop_catch_block (cdr parsetree))))))
 
 
-(define tcf_state
-  (lambda (parsetree instate)
-    (state (new_tcf_parsetree parsetree) instate '())))
 
 (define new_tcf_parsetree
   (lambda (parsetree)
     (if (null? (fourth (car parsetree)))
-         (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cdr parsetree))
-         (append (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cdr (fourth (car parsetree)))) (cdr parsetree)))))
+         (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cdr parsetree))
+         (append (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))))
+
+(define extract_body
+  (lambda (block)
+    (cons (car block) (cons (cadr block) (third block)))))
+    
 
 (define can_break?
   (lambda (state)
