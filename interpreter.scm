@@ -101,7 +101,7 @@
   (lambda (parsetree)
     (if (null? (fourth (car parsetree)))
          (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cdr parsetree))
-         (append (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))))
+         (append (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))))
 
 ;(catch (e) (body)) -> (catch (e) body)
 (define extract_body
