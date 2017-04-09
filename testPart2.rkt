@@ -4,42 +4,42 @@
     (if (eq? (interpret file) expected) (string-append "Passed: " file) (string-append "Failed: " file))))
 
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/1.javaish" 20))
+    (test "TestsPart2/1.txt" 20))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/2.javaish" 164))
+    (test "TestsPart2/2.txt" 164))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/3.javaish" 32))
+    (test "TestsPart2/3.txt" 32))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/4.javaish" 2))
+    (test "TestsPart2/4.txt" 2))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/5.javaish" 20)) ;Should give error
+    (test "TestsPart2/5.txt" 20)) ;Should give error
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/6.javaish" 25))
+    (test "TestsPart2/6.txt" 25))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/7.javaish" 21))
+    (test "TestsPart2/7.txt" 21))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/8.javaish" 6))
+    (test "TestsPart2/8.txt" 6))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/9.javaish" -1))
+    (test "TestsPart2/9.txt" -1))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/10.javaish" 789))
+    (test "TestsPart2/10.txt" 789))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/11.javaish" 20)) ;Should give error
+    (test "TestsPart2/11.txt" 20)) ;Should give error
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/12.javaish" 20)) ;Should give error
+    (test "TestsPart2/12.txt" 20)) ;Should give error
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/13.javaish" 20)) ;Should give error
+    (test "TestsPart2/13.txt" 20)) ;Should give error
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/14.javaish" 12))
+    (test "TestsPart2/14.txt" 12))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/15.javaish" 125))
+    (test "TestsPart2/15.txt" 125))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/16.javaish" 110))
+    (test "TestsPart2/16.txt" 110))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/17.javaish" 2000400))
+    (test "TestsPart2/17.txt" 2000400))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/18.javaish" 101))
+    (test "TestsPart2/18.txt" 101))
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/19.javaish" 20)) ;Should give error
+    (test "TestsPart2/19.txt" 20)) ;Should give error
 (with-handlers ([exn:fail? (lambda (exn) exn)])
-    (test "TestsPart2/20.javaish" 21)) ;Not required to pass
+    (test "TestsPart2/20.txt" 21)) ;Not required to pass
