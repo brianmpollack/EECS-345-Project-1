@@ -93,7 +93,10 @@
       ((eq? (next_command parsetree) 'funcall) ((lambda (func)
 
                                                   (state (remove_functions (fourth func))
-                                                      (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate)))
+                                                         (if  (not (null? (cdr instate))) 
+                                                             (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate)))
+                                                             (define_args (third func) (cddr (car parsetree)) (addlayer instate)))
+
                                                       err
                                                       (get_functions (fourth func) (addfunctionlayer functions))
                                                       (lambda (v) (return v))       ))
