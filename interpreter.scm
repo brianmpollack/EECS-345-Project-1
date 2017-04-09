@@ -14,10 +14,14 @@
 
 (define new_state '((()())))
 (define new_layer '(()()))
+(define new_func_layer '())
 
 (define addlayer
   (lambda (state)
     (cons new_layer state)))
+(define addfunctionlayer
+  (lambda (functions)
+    (cons new_func_layer functions)))
 
 (define strip_first_command cdr)
 (define top_level_state car)
@@ -41,15 +45,14 @@
                              ((not (eq? (next_command parsetree) 'catch)) (state (strip_first_command parsetree) instate err functions (lambda (v) (return v))))
                              (else (state (cddr parsetree) (add_var_with_value (caadr parsetree) err instate) '() functions (lambda (v) (return v))))))
       ((null? parsetree) instate) ;If we finished the parse tree, we are done
-      ((eq? (next_command parsetree) 'var) (if (var_declared (var (next_line parsetree)) instate) ;Variable assignment
-                                                         (error 'variable\ already\ declared)
+      ((eq? (next_command parsetree) 'var)
                                                          (state (strip_first_command parsetree) (if (value? (next_line parsetree))
-                                                                                                    (add_var_with_value (var (next_line parsetree)) (val (next_line parsetree)) instate)
-                                                                                                    (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) )) err functions (lambda (v) (return v)))))
+                                                                                                    (add_var_with_value (var (next_line parsetree)) (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions) instate)
+                                                                                                    (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) )) err functions (lambda (v) (return v))))
       ;variable declaration
       ((eq? (next_command parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
                                                        (error 'variable\ not\ declared)
-                                                       (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate instate) err functions (lambda (v) (return v)))))
+                                                       (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions) instate instate parsetree functions) err functions (lambda (v) (return v)))))
 
       ((eq? (next_command parsetree) 'return) ((lambda (returnval) ;return statement
                                                            (cond
@@ -58,7 +61,7 @@
                                                                    )))
 
 
-                                                         (value* (return_val parsetree) instate)))
+                                                         (value* (return_val parsetree) instate (cdr (car parsetree)) functions)))
 
       ((eq? (next_command parsetree) 'if) ((lambda (newstate newcondition) ;if statement
                                                        (if (boolean newcondition newstate)
@@ -80,15 +83,65 @@
                                                            (state (pop_through_while parsetree) (lower_level_states instate) err functions (lambda (v) (return v)))
                                                            (error 'cannot\ break)))
       ((eq? (next_command parsetree) 'continue) (state (pop_to_while parsetree) (lower_level_states instate) err functions (lambda (v) (return v))))
-      ((eq? (next_command parsetree) 'throw) (state (strip_first_command parsetree) instate (value* (second (car parsetree)) instate) functions (lambda (v) (return v))))
+      ((eq? (next_command parsetree) 'throw) (state (strip_first_command parsetree) instate (value* (second (car parsetree)) instate (cddr (car parsetree)) functions) functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'try) (state (new_tcf_parsetree parsetree) instate err functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'catch) (state (pop_catch_block parsetree) instate err functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'catch_end) (state (strip_first_command parsetree) instate err functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'function) (if (is_main? (car parsetree))
-                                                    (state (fourth (car parsetree)) instate err functions (lambda (v) (return v)))
+                                                    (state (fourth (car parsetree)) (addlayer instate) err functions (lambda (v) (return v)))
                                                     (state (strip_first_command parsetree) instate err (add_function (car parsetree) functions) (lambda (v) (return v)))))
-                                                           
+      ((eq? (next_command parsetree) 'funcall) ((lambda (func)
+
+                                                  (state (remove_functions (fourth func))
+                                                      (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate)))
+                                                      err
+                                                      (get_functions (fourth func) (addfunctionlayer functions))
+                                                      (lambda (v) (return v))       ))
+                                                (get_function (second (car parsetree)) functions)))
       )))
+
+(define define_args
+  (lambda (vars vals state)
+    (cond
+      ((null? vars) state)
+      ((null? vals) (error 'not\ enough\ arguments))
+      (else (define_args (cdr vars) (cdr vals) (add_var_with_value (car vars) (value* (car vals) (cdr state) '() '()) state))))))
+  
+(define remove_functions
+  (lambda (commands)
+    (cond
+    ((null? commands) '())
+    ((eq? (next_command commands) 'function) (cdr commands))
+    (else (cons (car commands) (remove_functions (cdr commands)))))))
+
+(define get_functions
+ (lambda (commands functions)
+   (cond
+   ((null? commands) functions)
+   ((eq? (next_command commands) 'function) (cons (cons (car commands) (car functions)) (cdr functions)))
+   (else (get_functions (cdr commands) functions)))))
+
+
+
+(define function_in_scope
+  (lambda (name scope)
+    (cond
+      ((null? scope) #f)
+      ((eq? name (second (car scope))) #t)
+      (else (function_in_scope name (cdr scope))))))
+(define get_function
+  (lambda (name functions)
+    (cond
+      ((null? functions) (error 'function\ not\ declared))
+      ((null? (car functions)) (get_function name (cdr functions)))
+      ((eq? name (second (car (car functions)))) (car (car functions)))
+      (else (get_function name (cons (cdr (car functions)) (cdr functions)))))))
+(define get_function_in_scope
+  (lambda (name functions)
+    (cond
+      ((null? functions) (error 'no\ function))
+      ((eq? (second (car functions)) name) (car functions))
+      (else (get_function name (cdr functions))))))
 
 (define is_main?
   (lambda (command)
@@ -157,7 +210,7 @@
 
 (define add_var_with_value
   (lambda (var value state)
-    (cons (cons (cons var (car (car state))) (cons (cons (value* value state) (cadr (car state))) '())) (cdr state))))
+    (cons (cons (cons var (car (car state))) (cons (cons (value* value state '() '()) (cadr (car state))) '())) (cdr state))))
 
 (define var
   (lambda (line)
@@ -169,14 +222,14 @@
 
 
 (define assign
-  (lambda (var expr state full_state)
+  (lambda (var expr instate full_state parsetree functions)
     (cond
       ((null? state) (error 'variable\ not\ declared))
-      ((member? var (top_variables state)) (cons (assign_to_layer var (value* expr full_state) (car state)) (cdr state)))
+      ((member? var (top_variables instate)) (cons (assign_to_layer var (value* expr full_state parsetree functions) (car instate)) (cdr instate)))
       (else ((lambda (return)
-               (cons (car state) return))
+               (cons (car instate) return))
 
-             (assign var expr (cdr state) full_state))))))
+             (assign var expr (cdr instate) full_state '() '()))))))
 
 (define assign_to_layer
   (lambda (var val top)
@@ -218,22 +271,22 @@
       (else (bracket_cons (cdr reverse) (cons (car reverse) parsetree))))))
 
 (define assign* ;Recursively assigns variables in the state and returns the state
-  (lambda (variable expression state) 
+  (lambda (variable expression state parsetree functions) 
     (cond
-      ((and (pair? expression) (eq? (car expression) '=)) (assign* variable (second expression) (assign* (second expression) (third expression) state)))
+      ((and (pair? expression) (eq? (car expression) '=)) (assign* variable (second expression) (assign* (second expression) (third expression) state parsetree functions) parsetree functions))
       ((eq? (first_state_variable state) variable)
-       (assign_variable variable expression state))
+       (assign_variable variable expression state parsetree functions))
       
       (else ((lambda (memoization_variable)
                (cons (cons (car (car state)) (car memoization_variable)) (cons (cons (first_state_value state) (cadr memoization_variable)) '()) ) )
-             (assign* variable (value* expression state) (state_cdr state))))
+             (assign* variable (value* expression state parsetree functions) (state_cdr state) parsetree functions)))
 
       )))
       
 
 (define assign_variable ;Set the variable in the state to the given value
-  (lambda (variable expression state)
-    (cons (car state) (cons (cons (value* expression state) (cdr (cadr state)) )'()))
+  (lambda (variable expression state parsetree functions)
+    (cons (car state) (cons (cons (value* expression state parsetree functions) (cdr (cadr state)) )'()))
     ))
 
 (define next_command ;Returns the first variable in a list
@@ -255,41 +308,42 @@
     (cons (cdr (car state)) (cons (cdr (cadr state)) '()))))
     
 (define value* ;Takes a rule and state and produces a value
-  (lambda (expression state)
+  (lambda (expression instate parsetree functions)
     (cond
       ((null? expression)
        (error 'null\ expression))
+      ((and (pair? expression) (eq? (car expression) 'funcall)) (state parsetree instate '() functions (lambda (v) v)))
       ((boolean? expression) expression)
       ((number? expression) expression)
       ((symbol? expression) (cond
                               ((eq? expression 'true) #t)
                               ((eq? expression 'false) #f)
                               (else
-                               (value_for_variable expression state))))
-      (else (if (third? expression) (operation (consthree (car expression) (value* (second expression) state) (value* (third expression) state)) state)
-                (operation (cons (car expression) (cons (value* (second expression) state) '())) state)))
+                               (value_for_variable expression instate))))
+      (else (if (third? expression) (operation (consthree (car expression) (value* (second expression) instate (cons (second expression) '()) functions) (value* (third expression) instate  (cons (third expression) '()) functions)) instate (cons (third expression) '()) functions)
+                (operation (cons (car expression) (cons (value* (second expression) instate parsetree functions) '())) instate)))
       )))
 
 (define operation ; + - * / % (supports unary -)
-  (lambda (expression state)
+  (lambda (expression state parsetree functions)
     (cond
-      ((equal? (car expression) '+) (+ (value* (second expression) state) (value* (third expression) state)))
+      ((equal? (car expression) '+) (+ (value* (second expression) state (second expression) functions) (value* (third expression) state (third expression) functions)))
       ((equal? (car expression) '-) (if (third? expression)
-                                        (- (value* (second expression) state) (value* (third expression) state))
-                                        (- (value* (second expression) state))))
-      ((equal? (car expression) '*) (* (value* (second expression) state) (value* (third expression) state)))
-      ((equal? (car expression) '/) (truncate (/ (value* (second expression) state) (value* (third expression) state))))
-      ((equal? (car expression) '%) (modulo (value* (second expression) state) (value* (third expression) state)))
+                                        (- (value* (second expression) state parsetree functions) (value* (third expression) state parsetree functions))
+                                        (- (value* (second expression) state parsetree functions))))
+      ((equal? (car expression) '*) (* (value* (second expression) state parsetree functions) (value* (third expression) state parsetree functions)))
+      ((equal? (car expression) '/) (truncate (/ (value* (second expression) state parsetree functions) (value* (third expression) state parsetree functions))))
+      ((equal? (car expression) '%) (modulo (value* (second expression) state parsetree functions) (value* (third expression) state parsetree functions)))
       (else (boolean expression state))
 
       )))
 
 (define value_for_variable ;Gets the value for a variable in the given state. Returns the value
-  (lambda (variable state)
+  (lambda (variable instate)
     (cond
-      ((null? state) (error 'variable\ not\ declared))
-      ((member? variable (top_variables state)) (value_of_state variable (car state)))
-      (else (value_for_variable variable (cdr state))))))
+      ((null? instate) (error 'variable\ not\ declared))
+      ((member? variable (top_variables instate)) (value_of_state variable (car instate)))
+      (else (value_for_variable variable (cdr instate))))))
 
 (define value_of_state
   (lambda (variable state)
@@ -304,10 +358,10 @@
     (cond
       ((not (pair? condition)) state)
       ((and (not (pair? (second condition))) (not (pair? (third condition)))) state)
-      ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (assign* (second (second condition)) (third (second condition)) state))
-      ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (second (third condition)) (third (third condition)) state))
+      ((and (not (pair? (third condition))) (pair? (second condition)) (eq? (car (second condition)) '=)) (assign* (second (second condition)) (third (second condition)) state '() '()))
+      ((and (not (pair? (second condition))) (pair? (third condition)) (eq? (car (third condition)) '=)) (assign* (second (third condition)) (third (third condition)) state '() '()))
       ((and (pair? (second condition)) (pair? (third condition)) (eq? (car (second condition)) '=) (eq? (car (third condition)) '=))
-       (assign* (second (third condition)) (third (third condition)) (assign* (second (second condition)) (third (second condition)) state)))
+       (assign* (second (third condition)) (third (third condition)) (assign* (second (second condition)) (third (second condition)) state '() '())'()'()))
       (else state)
       )))
 
@@ -333,15 +387,15 @@
       ((and (not (pair? parsetree)) (equal? parsetree 'true)) #t)
       ((and (not (pair? parsetree)) (equal? parsetree 'false)) #f)
 
-      ((equal? (car parsetree) '<) (< (value* (second parsetree) instate) (value*(third parsetree) instate)))
-      ((equal? (car parsetree) '>) (> (value* (second parsetree) instate) (value*(third parsetree) instate)))
-      ((equal? (car parsetree) '==) (= (value* (second parsetree) instate) (value*(third parsetree) instate)))
-      ((equal? (car parsetree) '!=) (not (= (value* (second parsetree) instate) (value*(third parsetree) instate))))
-      ((equal? (car parsetree) '<=) (<= (value* (second parsetree) instate) (value*(third parsetree) instate)))
-      ((equal? (car parsetree) '>=) (>= (value* (second parsetree) instate) (value*(third parsetree) instate)))
-      ((equal? (car parsetree) '&&) (and (value* (second parsetree) instate) (value* (third parsetree) instate)))
-      ((equal? (car parsetree) '||) (or (value* (second parsetree) instate) (value* (third parsetree) instate)))
-      ((equal? (car parsetree) '!) (not (value* (second parsetree) instate)))
+      ((equal? (car parsetree) '<) (< (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '())))
+      ((equal? (car parsetree) '>) (> (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '())))
+      ((equal? (car parsetree) '==) (= (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '())))
+      ((equal? (car parsetree) '!=) (not (= (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '()))))
+      ((equal? (car parsetree) '<=) (<= (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '())))
+      ((equal? (car parsetree) '>=) (>= (value* (second parsetree) instate '() '()) (value*(third parsetree) instate '() '())))
+      ((equal? (car parsetree) '&&) (and (value* (second parsetree) instate '() '()) (value* (third parsetree) instate '() '())))
+      ((equal? (car parsetree) '||) (or (value* (second parsetree) instate '() '()) (value* (third parsetree) instate '() '())))
+      ((equal? (car parsetree) '!) (not (value* (second parsetree) instate '() '())))
       )))
 
 (define member? ;Returns #t if list contains atom
