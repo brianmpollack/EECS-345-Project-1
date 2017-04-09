@@ -6,6 +6,7 @@
 ;   state: ((x y ...)(1 5 ...))
 
 (load "simpleParser.scm") ;load parser provided with project description
+(require racket/trace)
 
 (define interpret
   (lambda (file)
@@ -74,9 +75,9 @@
                                                            (state (pop_through_while parsetree) (lower_level_states instate))
                                                            (error 'cannot\ break)))
       ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) (lower_level_states instate)))
-      ((eq? (first_variable_in_list parsetree) 'throw) (raise (value* (second (next_line parsetree)) instate)))
+      ((eq? (first_variable_in_list parsetree) 'throw) (state_catch (pop_through_catch (cdr parsetree)) (cons (second (next_line parsetree)) instate)))
       ((eq? (first_variable_in_list parsetree) 'try) (state (strip_first_command parsetree) (tcf_state parsetree instate)))
-
+      ((eq? (first_variable_in_list parsetree) 'catch) instate)
       )))
 
 (define state_try
@@ -84,10 +85,10 @@
     (state trybody instate)))
 
 (define state_catch
-  (lambda (instate catchbody raise)
+  (lambda (catchbody instate)
     (cond
-      ((null? catchbody) instate)
-      (else (state (caddr catchbody) (add_var_with_value (car (second catchbody)) raise instate))))))
+      ((null? catchbody) (cdr instate))
+      (else (state (cadr catchbody) (add_var_with_value (caar catchbody) (car instate) (cdr instate)))))))
 
 (define state_finally
   (lambda (finallybody instate)
@@ -97,7 +98,7 @@
 
 (define tcf_state
   (lambda (parsetree instate)
-    (state_finally (fourth (car parsetree)) (with-handlers ([(lambda (v) (number? v)) (lambda (v) (state_catch instate (third (car parsetree)) v))])  (state_try instate (second (car parsetree)))))))
+    (state_finally (fourth (car parsetree)) (state_try instate (append (second (car parsetree)) (third (car parsetree)))))))
 
 (define can_break?
   (lambda (state)
@@ -162,6 +163,12 @@
 
 (define top_variables caar)
 
+(define pop_through_catch
+  (lambda (parsetree)
+    (cond
+      ((null? parsetree) (error 'error\ not\ caught))
+      ((eq? (first_variable_in_list parsetree) 'catch) (cdr parsetree))
+      (else (pop_through_catch (cdr parsetree))))))
 
 (define pop_through_while
   (lambda (parsetree)
@@ -202,7 +209,9 @@
 
 (define first_variable_in_list ;Returns the first variable in a list
   (lambda (list)
-    (car (car list))))
+    (cond
+      ((pair? (car list)) (car (car list)))
+      (else (car list)))))
 ;These are the same and accomplish the same thing, but it helps to understand the code in other areas of this project
 (define first_state_variable ;Returns the first variable name in the state binding
   (lambda (state)
