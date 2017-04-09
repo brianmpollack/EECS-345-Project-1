@@ -99,9 +99,21 @@
 ;extracts try catch finally statemetns and adds catch_end for easy popping
 (define new_tcf_parsetree
   (lambda (parsetree)
-    (if (null? (fourth (car parsetree)))
-         (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cdr parsetree))
-         (append (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))))
+    (cond
+      ((catch_and_finally? parsetree) (append (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))
+      ((catch_no_finally? parsetree) (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cdr parsetree)))
+      ((no_catch_finally? parsetree) (append (append (second (car parsetree)) (cadr (fourth (car parsetree)))) (cdr parsetree)))
+      (else (append (second (car parsetree) (cdr parsetree)))))))
+
+(define catch_and_finally?
+  (lambda (parsetree)
+    (and (not (null? (third (car parsetree)))) (not (null? (fourth (car parsetree)))))))
+(define catch_no_finally?
+  (lambda (parsetree)
+    (and (not (null? (third (car parsetree)))) (null? (fourth (car parsetree))))))
+(define no_catch_finally?
+  (lambda (parsetree)
+    (and (null? (third (car parsetree))) (not (null? (fourth (car parsetree)))))))
 
 ;(catch (e) (body)) -> (catch (e) body)
 (define extract_body
