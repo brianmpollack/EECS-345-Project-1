@@ -33,21 +33,22 @@
 (define begin_statements cdr)
 
 (define state
-  (lambda (parsetree instate error) 
+  (lambda (parsetree instate err) 
     (cond
       ((null? parsetree) instate) ;If we finished the parse tree, we are done
-      ((not (null? error)) (cond
-                             ((null? parsetree) error)
-                             ((not (eq? (first_variable_in_list parsetree) 'catch)) (state (strip_first_command parsetree) instate error))))
+      ((not (null? err)) (cond
+                             ((null? parsetree) err)
+                             ((not (eq? (first_variable_in_list parsetree) 'catch)) (state (strip_first_command parsetree) instate err))
+                             (else (state (cddr parsetree) (add_var_with_value (caadr parsetree) err instate) '()))))
       ((eq? (first_variable_in_list parsetree) 'var) (if (var_declared (var (next_line parsetree)) instate) ;Variable assignment
                                                          (error 'variable\ already\ declared)
                                                          (state (strip_first_command parsetree) (if (value? (next_line parsetree))
                                                                                                     (add_var_with_value (var (next_line parsetree)) (val (next_line parsetree)) instate)
-                                                                                                    (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) )) error)))
+                                                                                                    (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) )) err)))
       ;variable declaration
       ((eq? (first_variable_in_list parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
                                                        (error 'variable\ not\ declared)
-                                                       (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate instate) error )))
+                                                       (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (val (next_line parsetree)) instate instate) err )))
 
       ((eq? (first_variable_in_list parsetree) 'return) ((lambda (returnval) ;return statement
                                                            (cond
@@ -60,50 +61,48 @@
 
       ((eq? (first_variable_in_list parsetree) 'if) ((lambda (newstate newcondition) ;if statement
                                                        (if (boolean newcondition newstate)
-                                                           (state (cons (if_body (next_line parsetree)) (strip_first_command parsetree)) newstate error)
+                                                           (state (cons (if_body (next_line parsetree)) (strip_first_command parsetree)) newstate err)
                                                            (if (fourth? (next_line parsetree))
-                                                               (state (cons (else_body (next_line parsetree)) (strip_first_command parsetree)) newstate error)
-                                                               (state (strip_first_command parsetree) instate error))))
+                                                               (state (cons (else_body (next_line parsetree)) (strip_first_command parsetree)) newstate err)
+                                                               (state (strip_first_command parsetree) instate err))))
                                                      (newstate (if_condition (next_line parsetree)) instate) (newcondition (if_condition (next_line parsetree)))))
       
       ((eq? (first_variable_in_list parsetree) 'while) ((lambda (newstate newcondition) ;while loop
                                                           (if (boolean newcondition newstate)
-                                                              (state (cons (while_body (next_line parsetree)) parsetree) instate error)
-                                                              (state (strip_first_command parsetree) instate error)
+                                                              (state (cons (while_body (next_line parsetree)) parsetree) instate err)
+                                                              (state (strip_first_command parsetree) instate err)
                                                               ))
                                                         (newstate (while_condition (next_line parsetree)) instate) (newcondition (while_condition (next_line parsetree)))))
-      ((eq? (first_variable_in_list parsetree) 'begin) (state (bracket_cons (reverse (begin_statements (next_line parsetree))) (parse_with_end parsetree)) (addlayer instate) error))
-      ((eq? (first_variable_in_list parsetree) 'end) (state (strip_first_command parsetree) (lower_level_states instate) error))
+      ((eq? (first_variable_in_list parsetree) 'begin) (state (bracket_cons (reverse (begin_statements (next_line parsetree))) (parse_with_end parsetree)) (addlayer instate) err))
+      ((eq? (first_variable_in_list parsetree) 'end) (state (strip_first_command parsetree) (lower_level_states instate) err))
       ((eq? (first_variable_in_list parsetree) 'break) (if (can_break? instate)
-                                                           (state (pop_through_while parsetree) (lower_level_states instate) error)
+                                                           (state (pop_through_while parsetree) (lower_level_states instate) err)
                                                            (error 'cannot\ break)))
-      ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) (lower_level_states instate) error))
+      ((eq? (first_variable_in_list parsetree) 'continue) (state (pop_to_while parsetree) (lower_level_states instate) err))
       ((eq? (first_variable_in_list parsetree) 'throw) (state (strip_first_command parsetree) instate (value* (second (car parsetree)) instate)))
-      ((eq? (first_variable_in_list parsetree) 'try) (state (strip_first_command parsetree) (tcf_state parsetree instate) error))
-      ((eq? (first_variable_in_list parsetree) 'catch) (if (null? error)
-                                                           instate
-                                                           (state (strip_first_command parsetree) (add_var_with_value (caadr parsetree) error instate) '())))
+      ((eq? (first_variable_in_list parsetree) 'try) (state (new_tcf_parsetree parsetree) instate err))
+      ((eq? (first_variable_in_list parsetree) 'catch) (state (pop_catch_block parsetree) instate err))
+                                                           
       )))
 
-(define state_try
-  (lambda (instate trybody)
-    (state trybody instate '())))
 
-(define state_catch
-  (lambda (catchbody instate)
-    (cond
-      ((null? catchbody) (cdr instate))
-      (else (state (cadr catchbody) (add_var_with_value (caar catchbody) (car instate) (cdr instate)) '())))))
 
-(define state_finally
-  (lambda (finallybody instate)
+  (define pop_catch_block
+  (lambda (parsetree)
     (cond
-      ((null? finallybody) instate)
-      (else (state (cadr finallybody) instate '())))))
+      ((eq? (first_variable_in_list parsetree) 'catch_end) (cdr parsetree))
+      (else (pop_catch_block (cdr parsetree))))))
+
 
 (define tcf_state
   (lambda (parsetree instate)
-    (state_finally (fourth (car parsetree)) (state_try instate (append (second (car parsetree)) (third (car parsetree)))))))
+    (state (new_tcf_parsetree parsetree) instate '())))
+
+(define new_tcf_parsetree
+  (lambda (parsetree)
+    (if (null? (fourth (car parsetree)))
+         (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cdr parsetree))
+         (append (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cdr (fourth (car parsetree)))) (cdr parsetree)))))
 
 (define can_break?
   (lambda (state)
