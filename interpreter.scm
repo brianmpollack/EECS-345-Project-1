@@ -35,11 +35,12 @@
 (define state
   (lambda (parsetree instate err) 
     (cond
-      ((null? parsetree) instate) ;If we finished the parse tree, we are done
+     
       ((not (null? err)) (cond
-                             ((null? parsetree) err)
+                             ((null? parsetree) (raise err))
                              ((not (eq? (first_variable_in_list parsetree) 'catch)) (state (strip_first_command parsetree) instate err))
                              (else (state (cddr parsetree) (add_var_with_value (caadr parsetree) err instate) '()))))
+      ((null? parsetree) instate) ;If we finished the parse tree, we are done
       ((eq? (first_variable_in_list parsetree) 'var) (if (var_declared (var (next_line parsetree)) instate) ;Variable assignment
                                                          (error 'variable\ already\ declared)
                                                          (state (strip_first_command parsetree) (if (value? (next_line parsetree))
@@ -95,13 +96,14 @@
       (else (pop_catch_block (cdr parsetree))))))
 
 
-
+;extracts try catch finally statemetns and adds catch_end for easy popping
 (define new_tcf_parsetree
   (lambda (parsetree)
     (if (null? (fourth (car parsetree)))
          (append (append (append (second (car parsetree)) (extract_body (third (car parsetree)))) '(catch_end)) (cdr parsetree))
          (append (append (append (append (second (car parsetree)) (third (car parsetree))) '(catch_end)) (cadr (fourth (car parsetree)))) (cdr parsetree)))))
 
+;(catch (e) (body)) -> (catch (e) body)
 (define extract_body
   (lambda (block)
     (cons (car block) (cons (cadr block) (third block)))))
