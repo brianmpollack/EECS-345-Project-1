@@ -5,7 +5,7 @@
 ; Specifications:
 ;   state: ((x y ...)(1 5 ...))
 
-(load "simpleParser.scm") ;load parser provided with project description
+(load "functionParser.scm") ;load parser provided with project description
 (require racket/trace)
 
 (define interpret
