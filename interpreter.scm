@@ -87,15 +87,18 @@
       ((eq? (next_command parsetree) 'try) (state (new_tcf_parsetree parsetree) instate err functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'catch) (state (pop_catch_block parsetree) instate err functions (lambda (v) (return v))))
       ((eq? (next_command parsetree) 'catch_end) (state (strip_first_command parsetree) instate err functions (lambda (v) (return v))))
-      ((eq? (next_command parsetree) 'function) (if (is_main? (car parsetree))
-                                                    (state (fourth (car parsetree)) (addlayer instate) err functions (lambda (v) (return v)))
-                                                    (state (strip_first_command parsetree) instate err (add_function (car parsetree) functions) (lambda (v) (return v)))))
+      ((eq? (next_command parsetree) 'function) (cond
+                                                  ((and (is_main? (car parsetree)) (not (null? (caar instate)))) (state (fourth (car parsetree)) (addlayer instate) err functions (lambda (v) (return v))))
+                                                  ((is_main? (car parsetree))(state (fourth (car parsetree)) instate err functions (lambda (v) (return v))))  
+                                                  (else (state (strip_first_command parsetree) instate err (add_function (car parsetree) functions) (lambda (v) (return v))))))
       ((eq? (next_command parsetree) 'funcall) ((lambda (func)
 
                                                   (state (remove_functions (fourth func))
-                                                         (if  (not (null? (cdr instate))) 
-                                                             (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate)))
-                                                             (define_args (third func) (cddr (car parsetree)) (addlayer instate)))
+                                                         (cond
+                                                           ((and (not (null? (cdr instate)))  (vars_declared (caar instate) (cdr instate))) (define_args (third func) (cddr (car parsetree)) (addlayer instate)))
+                                                           ((not (null? (cdr instate))) (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate))))
+                                                           ((null? (caar instate)) (define_args (third func) (cddr (car parsetree)) instate))
+                                                           (else (define_args (third func) (cddr (car parsetree)) (addlayer instate))))
 
                                                       err
                                                       (get_functions (fourth func) (addfunctionlayer functions))
@@ -124,7 +127,12 @@
    ((eq? (next_command commands) 'function) (cons (cons (car commands) (car functions)) (cdr functions)))
    (else (get_functions (cdr commands) functions)))))
 
-
+(define vars_declared
+  (lambda (vars instate)
+    (cond
+      ((null? vars) #f)
+      ((var_declared (car vars) instate) #t)
+      (else (vars_declared (cdr vars) instate)))))
 
 (define function_in_scope
   (lambda (name scope)
