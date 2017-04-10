@@ -94,11 +94,8 @@
       ((eq? (next_command parsetree) 'funcall) ((lambda (func)
 
                                                   (state (remove_functions (fourth func))
-                                                         (cond
-                                                           ((and (not (null? (cdr instate)))  (vars_declared (caar instate) (cdr instate))) (define_args (third func) (cddr (car parsetree)) (addlayer instate)))
-                                                           ((not (null? (cdr instate))) (define_args (third func) (cddr (car parsetree)) (addlayer (cdr instate))))
-                                                           ((null? (caar instate)) (define_args (third func) (cddr (car parsetree)) instate))
-                                                           (else (define_args (third func) (cddr (car parsetree)) (addlayer instate))))
+                                                         (define_args (third func) (cddr (car parsetree)) (addlayer instate))
+                                                        
 
                                                       err
                                                       (get_functions (fourth func) (addfunctionlayer functions))
@@ -109,7 +106,7 @@
 (define define_args
   (lambda (vars vals state)
     (cond
-      ((null? vars) state)
+      ((null? vars) (cons (car state) (cddr state)))
       ((null? vals) (error 'not\ enough\ arguments))
       (else (define_args (cdr vars) (cdr vals) (add_var_with_value (car vars) (value* (car vals) (cdr state) '() '()) state))))))
   
@@ -332,7 +329,7 @@
                               (else
                                (value_for_variable expression instate))))
       (else (if (third? expression) (operation (consthree (car expression) (value* (second expression) instate (cons (second expression) '()) functions) (value* (third expression) instate  (cons (third expression) '()) functions)) instate (cons (third expression) '()) functions)
-                (operation (cons (car expression) (cons (value* (second expression) instate parsetree functions) '())) instate)))
+                (operation (cons (car expression) (cons (value* (second expression) instate parsetree functions) '())) instate parsetree functions)))
       )))
 
 (define operation ; + - * / % (supports unary -)
