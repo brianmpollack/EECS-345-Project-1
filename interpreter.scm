@@ -245,7 +245,7 @@
       (else ((lambda (return)
                (cons (car instate) return))
 
-             (assign var expr (cdr instate) full_state '() '() main))))))
+             (assign var expr (cdr instate) full_state parsetree functions main))))))
 
 (define assign_to_layer
   (lambda (var val top)
