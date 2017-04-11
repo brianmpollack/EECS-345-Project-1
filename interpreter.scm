@@ -122,7 +122,7 @@
                                                       (state (remove_functions (fourth func))
                                                          (define_args (third func) (cddr (car parsetree)) (if (is_state instate)
                                                                                                               (addlayer instate)
-                                                                                                              (addlayer (cdr instate)))parsetree functions main (function_in_scope? (function_name func) (car new_functions)))
+                                                                                                              (addlayer (cdr instate)))parsetree functions main (function_in_scope? (function_name func) (cadr new_functions)))
                                                         
 
                                                       err
