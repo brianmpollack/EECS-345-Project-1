@@ -47,27 +47,39 @@
       ((null? parsetree) (if (is_state instate)
                              (cons '() instate)
                              instate)) ;If we finished the parse tree, we are done
-      ((eq? (next_command parsetree) 'var)
-                                                         (state (strip_first_command parsetree) (if (value? (next_line parsetree))
-                                                                                                    (add_var_with_value (var (next_line parsetree))
-
-
-                                                                                                                        (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions main) instate)
-                                                                                                    (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) )) err functions main (lambda (v) (return v))))
+      ((eq? (next_command parsetree) 'var) (if (value? (next_line parsetree))
+                                               ((lambda (value)
+                                               (if (list? value)
+                                                  (state (strip_first_command parsetree) (add_var_with_value (var (next_line parsetree)) (car value) (cddr value)) err functions main (lambda (v) (return v)))
+                                                  (state (strip_first_command parsetree) (add_var_with_value (var (next_line parsetree)) (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions main) instate) err functions main (lambda (v) (return v)))
+                                              )) (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions main))
+                                             (state (strip_first_command parsetree) (cons (add_var (var (next_line parsetree)) (top_level_state instate)) (lower_level_states instate) ) err functions main (lambda (v) (return v)))))
+                                             
+     
       ;variable declaration
-      ((eq? (next_command parsetree) '=) (if (not (var_declared (var (next_line parsetree)) instate)) ;Variable assignment
-                                                       (error 'variable\ not\ declared)
-                                                       (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions main) instate instate parsetree functions main) err functions main (lambda (v) (return v)))))
+      ((eq? (next_command parsetree) '=) 
+                                                       ((lambda (value)
+                                                          (if (list? value)
+                                                              (state (strip_first_command parsetree) (assign (var (next_line parsetree)) (car value) (cddr value)(cddr value) parsetree functions main) err functions main (lambda (v) (return v)))
+                                                              (state (strip_first_command parsetree) (assign (var (next_line parsetree)) value instate instate parsetree functions main) err functions main (lambda (v) (return v))))
+                                                          )(value* (val (next_line parsetree)) instate (cddr (car parsetree)) functions main)))
+                                                       
+                                                      
 
       ((eq? (next_command parsetree) 'return) (if main
                                                   ((lambda (returnval) ;return statement
+                                                     (if (list? returnval)
+                                                         (car returnval)
+                                                         
                                                            (cond
                                                              ((not (boolean? returnval)) returnval)
                                                              (else (if returnval 'true 'false)
-                                                                   )))
+                                                                   ))))
 
 
-                                                         (value* (return_val parsetree) instate (cdr (car parsetree)) functions main))
+                                                         (value* (return_val parsetree)  (if (is_state instate)
+                                                                                                             instate
+                                                                                                              (cdr instate)) (cdr (car parsetree)) functions main))
                                                   (cons (value* (return_val parsetree) instate parsetree functions main) instate))) 
 
       ((eq? (next_command parsetree) 'if) ((lambda (newstate newcondition) ;if statement
@@ -105,9 +117,9 @@
                                                          (state (strip_first_command parsetree) statecall err functions main (lambda (v) (return v) )))
                                                      
                                                       (state (remove_functions (fourth func))
-                                                         (define_args (third func) (cddr (car parsetree)) (if (null? (caar instate))
-                                                                                                              instate
-                                                                                                              (addlayer instate))parsetree functions main)
+                                                         (define_args (third func) (cddr (car parsetree)) (if (is_state instate)
+                                                                                                              (addlayer instate)
+                                                                                                              (addlayer (cdr instate)))parsetree functions main)
                                                         
 
                                                       err
@@ -120,10 +132,11 @@
 (define is_state
   (lambda (state)
     (cond
+      ((null? (car state)) #f)
       ((not (list? (car state))) #f)
       ((not (list? (car (car state)))) #f)
       ((not (list? (cadr (car state)))) #f)
-      ((third? (state)) #f)
+      ((third? (car state)) #f)
       (else #t))))
 
 (define define_args
@@ -131,9 +144,9 @@
     (cond
       ((and (null? vars) (not (null? vals))) (error 'too\ many\ arguments))
       ((and (null? vars) (or (null? (cdr state)) (null? (cddr state)))) state)
-      ((null? vars) (cons (car state) (cddr state)))
+      ;((null? vars) (cons (car state) (cddr state)))
       
-   ;   ((null? vars) state)
+      ((null? vars) state)
       ((null? vals) (error 'not\ enough\ arguments))
       (else (define_args (cdr vars) (cdr vals) (add_var_with_value (car vars) (value* (car vals) (cdr state) parsetree functions main) state) parsetree functions main)))))
 
@@ -265,7 +278,7 @@
 (define assign
   (lambda (var expr instate full_state parsetree functions main)
     (cond
-      ((null? state) (error 'variable\ not\ declared))
+      ((null? instate) (error 'variable\ not\ declared))
       ((member? var (top_variables instate)) (cons (assign_to_layer var (value* expr full_state parsetree functions main) (car instate)) (cdr instate)))
       (else ((lambda (return)
                (cons (car instate) return))
@@ -353,9 +366,7 @@
     (cond
       ((null? expression)
        (error 'null\ expression))
-      ((and (pair? expression) (eq? (car expression) 'funcall)) ((lambda (stateret)
-                                                                   (value* (car stateret) (cdr stateret) parsetree functions main))
-                                                                 (state parsetree instate '() functions main (lambda (v) v))))
+      ((and (pair? expression) (eq? (car expression) 'funcall)) (state parsetree instate '() functions main (lambda (v) v)))
       ((boolean? expression) expression)
       ((number? expression) expression)
       ((symbol? expression) (cond
@@ -363,8 +374,11 @@
                               ((eq? expression 'false) #f)
                               (else
                                (value_for_variable expression instate))))
-      (else (if (third? expression) (operation (consthree (car expression) (value* (second expression) instate (cons (second expression) '()) functions main) (value* (third expression) instate  (cons (third expression) '()) functions main)) instate (cons (third expression) '()) functions)
-                (operation (cons (car expression) (cons (value* (second expression) instate parsetree functions main) '())) instate parsetree functions)))
+      (else (if (and (pair? expression) (is_state (cdr expression)))
+                (car expression)
+
+       (if (third? expression) (operation (consthree (car expression) (value* (second expression) instate (cons (second expression) '()) functions main) (value* (third expression) instate  (cons (third expression) '()) functions main)) instate (cons (third expression) '()) functions)
+                (operation (cons (car expression) (cons (value* (second expression) instate parsetree functions main) '())) instate parsetree functions))))
       )))
 
 (define operation ; + - * / % (supports unary -)
@@ -448,9 +462,13 @@
       (else (or (eq? (car list) atom) (member? atom (cdr list)))))))
 
 
-(define third? ;Returns #t if list contains a third item
+(define second? ;Returns #t iff list contains a second item
   (lambda (list)
-    (not (null?  (cdr (cdr list))))))
+    (and (not (null? list)) (not (null? (cdr list))))))
+
+(define third? ;Returns #t iff list contains a third item
+  (lambda (list)
+    (and (second? list) (not (null?  (cdr (cdr list)))))))
 
 (define fourth? ;Returns #t if list contains a fourth item
   (lambda (list)
