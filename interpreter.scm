@@ -80,7 +80,9 @@
                                                          (value* (return_val parsetree)  (if (is_state instate)
                                                                                                              instate
                                                                                                               (cdr instate)) (cdr (car parsetree)) functions main))
-                                                  (cons (value* (return_val parsetree) instate parsetree functions main) instate))) 
+                                                  (cons (value* (return_val parsetree) instate parsetree functions main) (if (end_in_parsetree parsetree)
+                                                                                                                             (cdr instate)
+                                                                                                                             instate)))) 
 
       ((eq? (next_command parsetree) 'if) ((lambda (newstate newcondition) ;if statement
                                                        (if (boolean newcondition newstate)
@@ -111,6 +113,7 @@
                                                   ((is_main? (car parsetree))(state (fourth (car parsetree)) instate err functions #t (lambda (v) (return v))))  
                                                   (else (state (strip_first_command parsetree) instate err (add_function (car parsetree) functions) main (lambda (v) (return v))))))
       ((eq? (next_command parsetree) 'funcall) ((lambda (func)
+                                                  ((lambda (new_functions)
                                                   ((lambda (statecall)
                                                      
                                                     
@@ -119,16 +122,23 @@
                                                       (state (remove_functions (fourth func))
                                                          (define_args (third func) (cddr (car parsetree)) (if (is_state instate)
                                                                                                               (addlayer instate)
-                                                                                                              (addlayer (cdr instate)))parsetree functions main)
+                                                                                                              (addlayer (cdr instate)))parsetree functions main (function_in_scope? (function_name func) (car new_functions)))
                                                         
 
                                                       err
-                                                      (get_functions (fourth func) (addfunctionlayer functions))
+                                                      new_functions
                                                       #f
-                                                      (lambda (v) (return v))       )))
+                                                      (lambda (v) (return v))))
+                                                     ) (get_functions (fourth func) (addfunctionlayer functions))))
                                                 (get_function (second (car parsetree)) functions)))
       )))
 
+(define end_in_parsetree
+  (lambda (parsetree)
+    (cond
+    ((null? parsetree) #f)
+    ((eq? (next_command parsetree) 'end) #t)
+    (else (end_in_parsetree (cdr parsetree))))))
 (define is_state
   (lambda (state)
     (cond
@@ -139,16 +149,26 @@
       ((third? (car state)) #f)
       (else #t))))
 
+(define function_in_scope?
+  (lambda (name function_scope)
+    (cond
+      ((null? function_scope) #f)
+      (else (or (eq? name (second (car function_scope))) (function_in_scope name (cdr function_scope)))))))
+    
+(define function_name
+  (lambda (function)
+    (second function)))
+     
 (define define_args
-  (lambda (vars vals state parsetree functions main)
+  (lambda (vars vals state parsetree functions main in_scope)
     (cond
       ((and (null? vars) (not (null? vals))) (error 'too\ many\ arguments))
       ((and (null? vars) (or (null? (cdr state)) (null? (cddr state)))) state)
-      ;((null? vars) (cons (car state) (cddr state)))
+      ((and (not in_scope) (null? vars)) (cons (car state) (cddr state)))
       
       ((null? vars) state)
       ((null? vals) (error 'not\ enough\ arguments))
-      (else (define_args (cdr vars) (cdr vals) (add_var_with_value (car vars) (value* (car vals) (cdr state) parsetree functions main) state) parsetree functions main)))))
+      (else (define_args (cdr vars) (cdr vals) (add_var_with_value (car vars) (value* (car vals) (cdr state) parsetree functions main) state) parsetree functions main in_scope)))))
 
   
 (define last
